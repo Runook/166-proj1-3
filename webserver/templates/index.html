@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎓 Graduate Location Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .header h1 { font-size: 28px; margin-bottom: 5px; }
+        .header p { font-size: 14px; opacity: 0.9; }
+        .controls {
+            background: white;
+            padding: 15px 30px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        .controls label { font-weight: 600; font-size: 14px; margin-right: 8px; }
+        .controls select {
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            color: white;
+            margin-left: auto;
+        }
+        .btn-green { background: #48bb78; }
+        .btn-blue { background: #4299e1; }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        #map { height: 600px; width: 100%; }
+        .graduate-item {
+            background: #f7fafc;
+            padding: 8px;
+            margin: 6px 0;
+            border-radius: 4px;
+            border-left: 3px solid #667eea;
+        }
+        .graduate-name { font-weight: 600; color: #2d3748; }
+        .graduate-detail { font-size: 12px; color: #4a5568; margin-top: 3px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎓 Graduate Location Map</h1>
+        <p>Explore where graduates live and work</p>
+    </div>
+    
+    <div class="controls">
+        <form method="GET" action="/" style="display: flex; gap: 20px; align-items: center; flex: 1;">
+            <div>
+                <label>🏛️ Club:</label>
+                <select name="club_id" onchange="this.form.submit()">
+                    <option value="">All Clubs</option>
+                    {% for club in clubs %}
+                    <option value="{{club.id}}" {% if club.id|string == club_filter %}selected{% endif %}>
+                        {{club.name}} {% if club.category %}({{club.category}}){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label>📅 Year:</label>
+                <select name="year" onchange="this.form.submit()">
+                    <option value="">All Years</option>
+                    {% for year in years %}
+                    <option value="{{year}}" {% if year|string == year_filter %}selected{% endif %}>{{year}}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+        
+        <a href="/add_club" class="btn btn-green">🏛️ Add Club</a>
+        <a href="/add_student" class="btn btn-blue">👤 Add Student</a>
+    </div>
+    
+    <div id="map"></div>
+    
+    <div style="padding: 20px; background: white; margin: 20px;">
+        <h3>📊 Statistics</h3>
+        <p>Total Graduates Shown: <strong>{{graduates|length}}</strong></p>
+    </div>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const cityCoords = {
+            'San Francisco, CA': [37.7749, -122.4194],
+            'Chicago, IL': [41.8781, -87.6298],
+            'Seattle, WA': [47.6062, -122.3321],
+            'New York City, NY': [40.7128, -74.0060],
+            'New York, NY': [40.7128, -74.0060],
+            'Los Angeles, CA': [34.0522, -118.2437],
+            'Boston, MA': [42.3601, -71.0589],
+            'Austin, TX': [30.2672, -97.7431],
+            'Denver, CO': [39.7392, -104.9903]
+        };
+        
+        const map = L.map('map').setView([39.8283, -98.5795], 4);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+        
+        const graduates = {{ graduates|tojson }};
+        const locationGroups = {};
+        
+        graduates.forEach(grad => {
+            const key = `${grad.city}, ${grad.state}`;
+            if (!locationGroups[key]) locationGroups[key] = [];
+            locationGroups[key].push(grad);
+        });
+        
+        Object.keys(locationGroups).forEach(location => {
+            const grads = locationGroups[location];
+            const coords = cityCoords[location];
+            if (!coords) return;
+            
+            const count = grads.length;
+            const color = count >= 5 ? '#e53e3e' : count >= 3 ? '#dd6b20' : count >= 2 ? '#d69e2e' : '#38a169';
+            
+            const circle = L.circleMarker(coords, {
+                radius: Math.min(10 + count * 3, 30),
+                fillColor: color,
+                color: '#fff',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.7
+            }).addTo(map);
+            
+            let popup = `<div style="max-height: 350px; overflow-y: auto;">`;
+            popup += `<h3 style="margin-bottom: 10px;">📍 ${location}</h3>`;
+            popup += `<p><strong>${count} Graduate(s)</strong></p>`;
+            
+            grads.forEach(g => {
+                popup += `<div class="graduate-item">`;
+                popup += `<div class="graduate-name">👤 ${g.first_name} ${g.last_name}</div>`;
+                if (g.degree && g.graduation_year) {
+                    popup += `<div class="graduate-detail">🎓 ${g.degree} '${String(g.graduation_year).slice(-2)}</div>`;
+                }
+                if (g.industry) {
+                    popup += `<div class="graduate-detail">💼 ${g.industry}</div>`;
+                }
+                if (g.club) {
+                    popup += `<div class="graduate-detail">🏛️ ${g.club}</div>`;
+                }
+                if (g.email) {
+                    popup += `<div class="graduate-detail">✉️ ${g.email}</div>`;
+                }
+                popup += `</div>`;
+            });
+            popup += `</div>`;
+            circle.bindPopup(popup);
+        });
+    </script>
+</body>
+</html>
