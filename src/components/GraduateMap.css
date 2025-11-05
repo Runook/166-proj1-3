@@ -1,0 +1,194 @@
+.map-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.map-legend {
+  position: absolute;
+  bottom: 30px;
+  right: 30px;
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+}
+
+.map-legend h4 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.legend-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Popup Styles */
+.custom-popup .leaflet-popup-content-wrapper {
+  border-radius: 10px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.custom-popup .leaflet-popup-content {
+  margin: 0;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.popup-content {
+  padding: 16px;
+}
+
+.popup-title {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #2d3748;
+  border-bottom: 2px solid #667eea;
+  padding-bottom: 8px;
+}
+
+.popup-stats {
+  margin-bottom: 12px;
+}
+
+.student-count {
+  display: inline-block;
+  background: #667eea;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.industries-section,
+.graduates-section {
+  margin-top: 16px;
+}
+
+.industries-section h4,
+.graduates-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.industries-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.industry-tag {
+  display: inline-block;
+  background: #edf2f7;
+  color: #2d3748;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.graduates-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 250px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.graduate-item {
+  background: #f7fafc;
+  padding: 10px;
+  border-radius: 6px;
+  border-left: 3px solid #667eea;
+}
+
+.graduate-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #2d3748;
+  margin-bottom: 6px;
+}
+
+.graduate-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.detail-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.detail-badge.degree {
+  background: #bee3f8;
+  color: #2c5282;
+}
+
+.detail-badge.honors {
+  background: #feebc8;
+  color: #7c2d12;
+}
+
+.graduate-industry,
+.graduate-club,
+.graduate-email {
+  font-size: 12px;
+  color: #4a5568;
+  margin-top: 4px;
+}
+
+.graduate-email {
+  color: #667eea;
+  word-break: break-all;
+}
+
+/* Scrollbar styles for popup */
+.graduates-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.graduates-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.graduates-list::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+}
+
+.graduates-list::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
