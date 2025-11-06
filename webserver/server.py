@@ -348,16 +348,25 @@ def login_post():
 	if not username or not password:
 		return render_template("login.html", error="Please enter username and password")
 	
-	# Create a new connection for this request if g.conn is None
+	# Try to get or create a database connection with retry
 	conn = g.conn
 	should_close = False
+	
 	if conn is None:
-		try:
-			conn = engine.connect()
-			should_close = True
-		except Exception as e:
-			print(f"Failed to create connection: {e}")
-			return render_template("login.html", error="Database connection error. Please try again later.")
+		# Try to connect up to 3 times with delay
+		import time
+		for attempt in range(3):
+			try:
+				conn = engine.connect()
+				should_close = True
+				break
+			except Exception as e:
+				if attempt < 2:  # Not the last attempt
+					print(f"Connection attempt {attempt + 1} failed, retrying...")
+					time.sleep(1)  # Wait 1 second before retry
+				else:
+					print(f"Failed to create connection after 3 attempts: {e}")
+					return render_template("login.html", error="Database is temporarily unavailable. Please try again in a moment.")
 	
 	try:
 		if action == 'signup':
