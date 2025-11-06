@@ -10,6 +10,7 @@ An interactive web application that visualizes graduate locations, industries, a
 - 🔍 **Filtering**: Filter graduates by club membership and graduation year
 - 💼 **Industry Insights**: View what industries graduates are working in
 - 📍 **Location Tracking**: Track where graduates currently live
+- 🧑‍💻 **User Authentication and Login**: Simple login for user identification (name and email)
 
 ## Quick Start
 
@@ -96,6 +97,10 @@ The application connects to a PostgreSQL database with the following schema:
 - `member_of` - Club memberships
 
 ## Usage
+
+### Login
+
+The page initially directs you to a login page. To view, create an account by providing an email address and submitting your name
 
 ### Viewing the Map
 
