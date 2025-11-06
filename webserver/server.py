@@ -348,31 +348,45 @@ def login_post():
 	if not username or not password:
 		return render_template("login.html", error="Please enter username and password")
 	
-	if g.conn is None:
-		return render_template("login.html", error="Database connection error. Please try again.")
+	# Create a new connection for this request if g.conn is None
+	conn = g.conn
+	should_close = False
+	if conn is None:
+		try:
+			conn = engine.connect()
+			should_close = True
+		except Exception as e:
+			print(f"Failed to create connection: {e}")
+			return render_template("login.html", error="Database connection error. Please try again later.")
 	
 	try:
 		if action == 'signup':
 			# Registration: Validate inputs
 			if not email:
+				if should_close:
+					conn.close()
 				return render_template("login.html", error="Email is required for registration.")
 			
 			# Check if username already exists
 			check_user_query = "SELECT user_id FROM jc6292.app_user WHERE username = :username"
-			cursor = g.conn.execute(text(check_user_query), {'username': username})
+			cursor = conn.execute(text(check_user_query), {'username': username})
 			existing_user = cursor.fetchone()
 			cursor.close()
 			
 			if existing_user:
+				if should_close:
+					conn.close()
 				return render_template("login.html", error="Username already exists. Please choose another one.")
 			
 			# Check if email already exists
 			check_email_query = "SELECT user_id FROM jc6292.app_user WHERE email = :email"
-			cursor = g.conn.execute(text(check_email_query), {'email': email})
+			cursor = conn.execute(text(check_email_query), {'email': email})
 			existing_email = cursor.fetchone()
 			cursor.close()
 			
 			if existing_email:
+				if should_close:
+					conn.close()
 				return render_template("login.html", error="Email already registered. Please use a different email.")
 			
 			# Hash password and insert new user
@@ -381,12 +395,16 @@ def login_post():
 				INSERT INTO jc6292.app_user (username, email, password_hash)
 				VALUES (:username, :email, :password_hash)
 			"""
-			g.conn.execute(text(insert_user_query), {
+			conn.execute(text(insert_user_query), {
 				'username': username,
 				'email': email,
 				'password_hash': password_hash
 			})
-			g.conn.commit()
+			conn.commit()
+			
+			# Close connection if we created it
+			if should_close:
+				conn.close()
 			
 			# Auto-login after registration
 			session['username'] = username
@@ -397,26 +415,38 @@ def login_post():
 		else:  # signin
 			# Login: Verify username and password
 			user_query = "SELECT user_id, username, email, password_hash FROM jc6292.app_user WHERE username = :username"
-			cursor = g.conn.execute(text(user_query), {'username': username})
+			cursor = conn.execute(text(user_query), {'username': username})
 			user = cursor.fetchone()
 			cursor.close()
 			
 			if not user:
+				if should_close:
+					conn.close()
 				return render_template("login.html", error="Invalid username or password.")
 			
 			# Verify password
 			if check_password_hash(user[3], password):  # user[3] is password_hash
+				if should_close:
+					conn.close()
+				
 				session['username'] = user[1]  # user[1] is username
 				if user[2]:  # user[2] is email
 					session['email'] = user[2]
 				return redirect('/')
 			else:
+				if should_close:
+					conn.close()
 				return render_template("login.html", error="Invalid username or password.")
 	
 	except Exception as e:
 		print(f"Error in login/register: {e}")
 		import traceback
 		traceback.print_exc()
+		if should_close and conn:
+			try:
+				conn.close()
+			except:
+				pass
 		return render_template("login.html", error="An error occurred. Please try again.")
 
 
