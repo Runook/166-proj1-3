@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Graduate Location Map</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .login-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 400px;
+            padding: 40px;
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .login-header h1 {
+            font-size: 28px;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+        
+        .login-header p {
+            color: #718096;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            color: #4a5568;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .login-button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .login-button:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        
+        .error-message {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            border-left: 4px solid #c53030;
+        }
+        
+        .demo-hint {
+            margin-top: 20px;
+            text-align: center;
+            padding: 12px;
+            background: #edf2f7;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #4a5568;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>🎓 Graduate Location Map</h1>
+            <p id="subtitle">Sign in to continue</p>
+        </div>
+
+        {% if error %}
+        <div class="error-message">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST" action="/login" id="authForm">
+            <div class="form-group" id="emailGroup" style="display: none;">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" placeholder="Enter your email">
+            </div>
+
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required placeholder="Enter your username">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required placeholder="Enter your password">
+            </div>
+
+            <input type="hidden" name="action" id="actionInput" value="signin">
+            <button type="submit" class="login-button" id="submitBtn">Sign In</button>
+        </form>
+
+        <div style="text-align: center; margin-top: 20px;">
+            <button onclick="toggleMode()" style="background: none; border: none; color: #667eea; text-decoration: underline; cursor: pointer; font-size: 14px;" id="toggleBtn">
+                Don't have an account? Sign up
+            </button>
+        </div>
+
+        <div class="demo-hint" id="demoHint" style="display: none;">
+            💡 Demo mode: Any username and password will work
+        </div>
+    </div>
+
+    <script>
+        let isSignIn = true;
+        
+        function toggleMode() {
+            isSignIn = !isSignIn;
+            const subtitle = document.getElementById('subtitle');
+            const submitBtn = document.getElementById('submitBtn');
+            const toggleBtn = document.getElementById('toggleBtn');
+            const emailGroup = document.getElementById('emailGroup');
+            const actionInput = document.getElementById('actionInput');
+            
+            const emailInput = document.getElementById('email');
+            
+            if (isSignIn) {
+                subtitle.textContent = 'Sign in to continue';
+                submitBtn.textContent = 'Sign In';
+                toggleBtn.textContent = "Don't have an account? Sign up";
+                emailGroup.style.display = 'none';
+                emailInput.removeAttribute('required');
+                actionInput.value = 'signin';
+            } else {
+                subtitle.textContent = 'Create your account';
+                submitBtn.textContent = 'Sign Up';
+                toggleBtn.textContent = 'Already have an account? Sign in';
+                emailGroup.style.display = 'block';
+                emailInput.setAttribute('required', 'required');
+                actionInput.value = 'signup';
+            }
+        }
+    </script>
+</body>
+</html>
+

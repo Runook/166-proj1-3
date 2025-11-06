@@ -12,10 +12,14 @@ import os
 # accessible as a variable in index.html:
 from sqlalchemy import *
 from sqlalchemy.pool import NullPool
-from flask import Flask, request, render_template, g, redirect, Response, abort
+from flask import Flask, request, render_template, g, redirect, Response, abort, session
+from werkzeug.security import generate_password_hash, check_password_hash
 
 tmpl_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
 app = Flask(__name__, template_folder=tmpl_dir)
+
+# Secret key for session management (change this to a random string in production)
+app.secret_key = 'your-secret-key-change-this-in-production'
 
 
 #
@@ -43,20 +47,30 @@ DATABASEURI = f"postgresql://{DATABASE_USERNAME}:{DATABASE_PASSWRD}@{DATABASE_HO
 engine = create_engine(DATABASEURI, poolclass=NullPool)
 
 #
-# Example of running queries in your database
-# Note: Commented out since we're using existing database tables
+# Initialize user table if it doesn't exist
+# This creates a users table in the jc6292 schema for authentication
 #
-# with engine.connect() as conn:
-# 	create_table_command = """
-# 	CREATE TABLE IF NOT EXISTS test (
-# 		id serial,
-# 		name text
-# 	)
-# 	"""
-# 	res = conn.execute(text(create_table_command))
-# 	insert_table_command = """INSERT INTO test(name) VALUES ('grace hopper'), ('alan turing'), ('ada lovelace')"""
-# 	res = conn.execute(text(insert_table_command))
-# 	conn.commit()
+def init_user_table():
+	"""Create user table if it doesn't exist"""
+	try:
+		with engine.connect() as conn:
+			create_user_table = """
+			CREATE TABLE IF NOT EXISTS jc6292.app_user (
+				user_id SERIAL PRIMARY KEY,
+				username VARCHAR(50) UNIQUE NOT NULL,
+				email VARCHAR(100),
+				password_hash VARCHAR(255) NOT NULL,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			)
+			"""
+			conn.execute(text(create_user_table))
+			conn.commit()
+			print("✅ User table initialized")
+	except Exception as e:
+		print(f"⚠️  User table initialization: {e}")
+
+# Initialize user table on startup
+init_user_table()
 
 
 @app.before_request
@@ -68,6 +82,11 @@ def before_request():
 
 	The variable g is globally accessible.
 	"""
+	# Don't connect to database for static files or login GET requests
+	if request.endpoint in ['static'] or (request.endpoint == 'login' and request.method == 'GET'):
+		g.conn = None
+		return
+	
 	try:
 		g.conn = engine.connect()
 	except:
@@ -106,6 +125,10 @@ def index():
 	Main page - Graduate Location Map
 	Shows all graduates on a map with filtering options
 	"""
+	# Check if user is logged in
+	if 'username' not in session:
+		return redirect('/login')
+	
 	# Get filter parameters
 	club_filter = request.args.get('club_id', '')
 	year_filter = request.args.get('year', '')
@@ -183,7 +206,8 @@ def index():
 	cursor.close()
 	
 	context = dict(clubs=clubs, years=years, graduates=graduates, 
-	               club_filter=club_filter, year_filter=year_filter)
+	               club_filter=club_filter, year_filter=year_filter,
+	               username=session.get('username'))
 	return render_template("index.html", **context)
 
 # Add student page - shows form
@@ -305,10 +329,103 @@ def another():
 	return render_template("another.html")
 
 
-@app.route('/login')
+# Login page - show login form
+@app.route('/login', methods=['GET'])
 def login():
-	abort(401)
-	this_is_never_executed()
+	"""Show login page"""
+	return render_template("login.html")
+
+
+# Login/Register - handle form submission
+@app.route('/login', methods=['POST'])
+def login_post():
+	"""Handle login or registration with database"""
+	username = request.form.get('username', '').strip()
+	password = request.form.get('password', '')
+	email = request.form.get('email', '').strip()
+	action = request.form.get('action', 'signin')
+	
+	if not username or not password:
+		return render_template("login.html", error="Please enter username and password")
+	
+	if g.conn is None:
+		return render_template("login.html", error="Database connection error. Please try again.")
+	
+	try:
+		if action == 'signup':
+			# Registration: Validate inputs
+			if not email:
+				return render_template("login.html", error="Email is required for registration.")
+			
+			# Check if username already exists
+			check_user_query = "SELECT user_id FROM jc6292.app_user WHERE username = :username"
+			cursor = g.conn.execute(text(check_user_query), {'username': username})
+			existing_user = cursor.fetchone()
+			cursor.close()
+			
+			if existing_user:
+				return render_template("login.html", error="Username already exists. Please choose another one.")
+			
+			# Check if email already exists
+			check_email_query = "SELECT user_id FROM jc6292.app_user WHERE email = :email"
+			cursor = g.conn.execute(text(check_email_query), {'email': email})
+			existing_email = cursor.fetchone()
+			cursor.close()
+			
+			if existing_email:
+				return render_template("login.html", error="Email already registered. Please use a different email.")
+			
+			# Hash password and insert new user
+			password_hash = generate_password_hash(password)
+			insert_user_query = """
+				INSERT INTO jc6292.app_user (username, email, password_hash)
+				VALUES (:username, :email, :password_hash)
+			"""
+			g.conn.execute(text(insert_user_query), {
+				'username': username,
+				'email': email,
+				'password_hash': password_hash
+			})
+			g.conn.commit()
+			
+			# Auto-login after registration
+			session['username'] = username
+			if email:
+				session['email'] = email
+			return redirect('/')
+		
+		else:  # signin
+			# Login: Verify username and password
+			user_query = "SELECT user_id, username, email, password_hash FROM jc6292.app_user WHERE username = :username"
+			cursor = g.conn.execute(text(user_query), {'username': username})
+			user = cursor.fetchone()
+			cursor.close()
+			
+			if not user:
+				return render_template("login.html", error="Invalid username or password.")
+			
+			# Verify password
+			if check_password_hash(user[3], password):  # user[3] is password_hash
+				session['username'] = user[1]  # user[1] is username
+				if user[2]:  # user[2] is email
+					session['email'] = user[2]
+				return redirect('/')
+			else:
+				return render_template("login.html", error="Invalid username or password.")
+	
+	except Exception as e:
+		print(f"Error in login/register: {e}")
+		import traceback
+		traceback.print_exc()
+		return render_template("login.html", error="An error occurred. Please try again.")
+
+
+# Logout
+@app.route('/logout')
+def logout():
+	"""Logout user"""
+	session.pop('username', None)
+	return redirect('/login')
 
 
 if __name__ == "__main__":
