@@ -12,6 +12,8 @@ An interactive web application that visualizes graduate locations, industries, a
 - 📍 **Location Tracking**: Track where graduates currently live
 - 🧑‍💻 **User Authentication and Login**: Simple login for user identification (name and email)
 
+We did not implement only being able to see the students that share the same club and graduation year because it is not neccsarily a feature that is useful and we decided not to require this information for registration
+
 ## Quick Start
 
 ### Running Locally
@@ -96,6 +98,8 @@ The application connects to a PostgreSQL database with the following schema:
 - `works_in` - Student employment history
 - `member_of` - Club memberships
 
+The database operations done through the front end if fairly simple. Some interesting queries would be filtering the clubs and/or graduation years through the dropdowns as it then only shows where alumni are on the map that matches those filters. The add student and club queries are also possible as there are various optional information.
+
 ## Usage
 
 ### Login
@@ -173,6 +177,14 @@ python3 server.py       # Restart
 ## Port Configuration
 
 The application runs on port **8111** by default, as required for the course deployment.
+
+## PostgreSQL Account
+
+The database resides in the courses server under the account for jc6292
+
+## Web Application URL
+
+http://34.139.229.138:8111/
 
 ## License
 
