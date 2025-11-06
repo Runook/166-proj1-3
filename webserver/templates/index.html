@@ -65,6 +65,10 @@
     </div>
     
     <div class="controls">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-weight: 600;">👋 Welcome, {{username}}!</span>
+        </div>
+        
         <form method="GET" action="/" style="display: flex; gap: 20px; align-items: center; flex: 1;">
             <div>
                 <label>🏛️ Club:</label>
@@ -91,6 +95,7 @@
         
         <a href="/add_club" class="btn btn-green">🏛️ Add Club</a>
         <a href="/add_student" class="btn btn-blue">👤 Add Student</a>
+        <a href="/logout" class="btn" style="background: rgba(255,255,255,0.2); color: #333; border: 1px solid #ddd;">Logout</a>
     </div>
     
     <div id="map"></div>
