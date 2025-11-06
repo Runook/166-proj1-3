@@ -171,4 +171,6 @@ The application runs on port **8111** by default, as required for the course dep
 
 ## License
 
-Educational project for Columbia University CS4111.
+Educational project for Columbia University COMS4111 Intro to Databases.
+
+Student UNIs: jc6292, sd3888
