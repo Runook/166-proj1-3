@@ -4,15 +4,16 @@ An interactive web application that visualizes graduate locations, industries, a
 
 ## Features
 
-- 🗺️ **Interactive Map**: View graduate locations across the United States using Leaflet
-- 👥 **Student Profiles**: See detailed information including name, degree, industry, and contact
-- 🏛️ **Club Management**: Add and manage student organizations
-- 🔍 **Filtering**: Filter graduates by club membership and graduation year
-- 💼 **Industry Insights**: View what industries graduates are working in
-- 📍 **Location Tracking**: Track where graduates currently live
-- 🧑‍💻 **User Authentication and Login**: Simple login for user identification (name and email)
-
-We did not implement only being able to see the students that share the same club and graduation year because it is not neccsarily a feature that is useful and we decided not to require this information for registration
+- **Interactive Map**: View graduate locations across the United States using Leaflet
+- **Student Profiles**: See detailed information including name, degree, industry, and contact
+- **Club Management**: Add, search, and delete student organizations
+- **Filtering**: Filter graduates by club membership and graduation year
+- **Industry Insights**: View what industries graduates are working in (supports multiple industries per student)
+- **Location Tracking**: Track where graduates currently live
+- **User Authentication**: Simple login for user identification
+- **Full-Text Search**: Search clubs by description and activities
+- **Student Management**: View, search, and delete students
+- **CRUD Operations**: Complete Create, Read, Update, Delete functionality
 
 ## Quick Start
 
@@ -97,8 +98,32 @@ The application connects to a PostgreSQL database with the following schema:
 - `lives_in` - Student residential history
 - `works_in` - Student employment history
 - `member_of` - Club memberships
+- `alumni_profile` - Alumni profiles using composite location type
+- `app_user` - User authentication
 
-The database operations done through the front end if fairly simple. Some interesting queries would be filtering the clubs and/or graduation years through the dropdowns as it then only shows where alumni are on the map that matches those filters. The add student and club queries are also possible as there are various optional information.
+### Advanced PostgreSQL Features
+
+The application implements three advanced PostgreSQL features as part of the course requirements:
+
+**1. Full-Text Search (TEXT attribute)**
+- Added `about` TEXT column to `club` table with description of club activities
+- Implemented full-text search using `tsvector` and GIN index
+- Enables searching clubs by keywords: research, project, journal, performance, etc.
+- Route: `/search_clubs` with relevance ranking using `ts_rank()`
+
+**2. Array Attribute**
+- Added `industry_tags` VARCHAR[] array to `student` table
+- Stores multiple industries per student reflecting cross-industry experience
+- Query using `ANY()`, `ARRAY_AGG()`, and `ARRAY_LENGTH()` operators
+- Displayed on map popups and alumni profile pages
+
+**3. Composite Type**
+- Created `alumni_profile` table using existing `location` composite type
+- Composite type includes: loc_id, city, state, country
+- Enables querying location fields without additional JOINs
+- Accessed using `(current_location).city` syntax
+
+See `IMPLEMENTATION_SUMMARY.md` and `QUERY_EXAMPLES.sql` for detailed documentation and example queries.
 
 ## Usage
 
@@ -134,13 +159,50 @@ The home page displays all graduates on an interactive map. Click on any marker 
 1. Click **"Add Club"** button
 2. Enter club name
 3. Select category (Academic, Arts, Sports, Cultural, Professional, Other)
-4. Submit to add to the database
+4. Add description (optional but recommended for searchability)
+5. Submit to add to the database
+
+### Searching Clubs
+
+1. Click **"Search Clubs"** button
+2. Enter keywords to search club descriptions (e.g., "research", "project", "journal")
+3. Results ranked by relevance using full-text search
+4. View or delete clubs from search results
+
+### Managing Students
+
+1. Click **"Manage Students"** button
+2. View all students in a list format
+3. Use search box to filter students by name
+4. Click "View" to see detailed profile or "Delete" to remove student
+5. Deleting a student removes all associated data (graduation records, memberships, work history)
+
+### Viewing Alumni Profiles
+
+1. Click on any graduate marker on the map
+2. Click "View Full Profile" link in popup
+3. See detailed information including:
+   - Contact information and current location (using composite type)
+   - Multiple industries (from array attribute)
+   - Club memberships with descriptions
+   - Option to delete student from profile page
 
 ### Filtering
 
 Use the dropdown menus at the top to filter by:
 - **Club**: View members of a specific organization
 - **Graduation Year**: View graduates from a specific year
+
+### Deleting Data
+
+**Delete Student:**
+- From alumni profile page (Danger Zone at bottom)
+- From Manage Students page
+- Cascades to all related records
+
+**Delete Club:**
+- From Search Clubs page
+- Only allowed if club has no active members
 
 ## Dependencies
 

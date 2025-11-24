@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manage Students</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 { color: #2d3748; margin-bottom: 10px; }
+        .subtitle { color: #718096; margin-bottom: 30px; }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .back-link:hover { text-decoration: underline; }
+        .student-list {
+            display: grid;
+            gap: 12px;
+        }
+        .student-card {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .student-info h3 {
+            color: #2d3748;
+            margin: 0 0 8px 0;
+        }
+        .student-details {
+            color: #4a5568;
+            font-size: 14px;
+        }
+        .student-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-view {
+            background: #4299e1;
+            color: white;
+        }
+        .btn-delete {
+            background: #e53e3e;
+            color: white;
+        }
+        .btn:hover { opacity: 0.9; }
+        .search-box {
+            margin-bottom: 20px;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .stats {
+            background: #edf2f7;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← Back to Map</a>
+        
+        <h1>👥 Manage Students</h1>
+        <p class="subtitle">View and manage all students in the database</p>
+        
+        <div class="stats">
+            <strong>Total Students:</strong> {{ students|length }}
+        </div>
+        
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Search by name..." onkeyup="filterStudents()">
+        </div>
+        
+        <div class="student-list" id="studentList">
+            {% for student in students %}
+            <div class="student-card" data-name="{{ student.first_name }} {{ student.last_name }}">
+                <div class="student-info">
+                    <h3>{{ student.first_name }} {{ student.last_name }}</h3>
+                    <div class="student-details">
+                        {% if student.email %}📧 {{ student.email }}{% endif %}
+                        {% if student.graduation_year %} | 🎓 {{ student.degree }} '{{ student.graduation_year }}{% endif %}
+                        {% if student.city %} | 📍 {{ student.city }}, {{ student.state }}{% endif %}
+                    </div>
+                </div>
+                <div class="student-actions">
+                    <a href="/alumni/{{ student.student_id }}" class="btn btn-view">View</a>
+                    <form method="POST" action="/delete_student/{{ student.student_id }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete {{ student.first_name }} {{ student.last_name }}? This will permanently remove all associated data!');">
+                        <button type="submit" class="btn btn-delete">Delete</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <script>
+        function filterStudents() {
+            const input = document.getElementById('searchInput');
+            const filter = input.value.toLowerCase();
+            const cards = document.querySelectorAll('.student-card');
+            
+            cards.forEach(card => {
+                const name = card.getAttribute('data-name').toLowerCase();
+                if (name.includes(filter)) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+
