@@ -36,7 +36,17 @@
             border-radius: 8px;
             font-size: 14px;
         }
-        input:focus, select:focus {
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            min-height: 120px;
+            font-family: Arial, sans-serif;
+            resize: vertical;
+        }
+        input:focus, select:focus, textarea:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
@@ -79,6 +89,12 @@
                     <option value="Professional">Professional</option>
                     <option value="Other">Other</option>
                 </select>
+            </div>
+            
+            <div class="form-group">
+                <label>About the Club</label>
+                <textarea name="about" placeholder="Describe the club's activities, focus areas (e.g., research, projects, publications), and what members do. This helps alumni understand the club's nature and connect over shared interests."></textarea>
+                <small style="color: #718096; font-size: 12px;">Include keywords like 'research', 'project', 'journal', 'performance' to help others search for clubs with similar activities.</small>
             </div>
             
             <div class="buttons">

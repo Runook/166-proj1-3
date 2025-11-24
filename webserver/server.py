@@ -133,12 +133,12 @@ def index():
 	club_filter = request.args.get('club_id', '')
 	year_filter = request.args.get('year', '')
 	
-	# Get all clubs for dropdown
-	clubs_query = "SELECT club_id, name, category FROM jc6292.club ORDER BY name"
+	# Get all clubs for dropdown (including about text)
+	clubs_query = "SELECT club_id, name, category, about FROM jc6292.club ORDER BY name"
 	cursor = g.conn.execute(text(clubs_query))
 	clubs = []
 	for result in cursor:
-		clubs.append({'id': result[0], 'name': result[1], 'category': result[2]})
+		clubs.append({'id': result[0], 'name': result[1], 'category': result[2], 'about': result[3]})
 	cursor.close()
 	
 	# Get all graduation years for dropdown
@@ -149,7 +149,7 @@ def index():
 		years.append(result[0])
 	cursor.close()
 	
-	# Build graduate query with filters
+	# Build graduate query with filters (including industry_tags array)
 	graduates_query = """
 		SELECT 
 			s.student_id,
@@ -163,7 +163,8 @@ def index():
 			g.honors,
 			i.name as industry_name,
 			c.name as club_name,
-			c.category as club_category
+			c.category as club_category,
+			s.industry_tags
 		FROM jc6292.student s
 		LEFT JOIN jc6292.graduated_in g ON s.student_id = g.student_id
 		LEFT JOIN jc6292.lives_in li ON s.student_id = li.student_id AND li.until_date IS NULL
@@ -201,7 +202,8 @@ def index():
 			'honors': result[8],
 			'industry': result[9],
 			'club': result[10],
-			'club_category': result[11]
+			'club_category': result[11],
+			'industry_tags': result[12] if result[12] else []
 		})
 	cursor.close()
 	
@@ -295,11 +297,120 @@ def add_student():
 		return f"Error: {str(e)}", 500
 
 
-# Add club page - shows form
 @app.route('/add_club')
 def add_club_page():
 	"""Display form to add a new club"""
 	return render_template("add_club.html")
+
+
+# Search clubs by text (full-text search)
+@app.route('/search_clubs')
+def search_clubs():
+	"""Search clubs using full-text search on about field"""
+	if 'username' not in session:
+		return redirect('/login')
+	
+	search_query = request.args.get('q', '')
+	
+	if search_query:
+		# Full-text search
+		search_sql = """
+			SELECT club_id, name, category, about, 
+			       ts_rank(about_tsv, query) AS rank
+			FROM jc6292.club, 
+			     to_tsquery('english', :search_query) query
+			WHERE about_tsv @@ query
+			ORDER BY rank DESC
+		"""
+		params = {'search_query': ' | '.join(search_query.split())}
+		cursor = g.conn.execute(text(search_sql), params)
+	else:
+		# Show all clubs
+		cursor = g.conn.execute(text("SELECT club_id, name, category, about, 0 as rank FROM jc6292.club ORDER BY name"))
+	
+	clubs = []
+	for result in cursor:
+		clubs.append({
+			'id': result[0],
+			'name': result[1],
+			'category': result[2],
+			'about': result[3],
+			'rank': result[4] if len(result) > 4 else 0
+		})
+	cursor.close()
+	
+	context = dict(clubs=clubs, search_query=search_query, username=session.get('username'))
+	return render_template("search_clubs.html", **context)
+
+
+# View alumni profile (using composite type)
+@app.route('/alumni/<int:student_id>')
+def view_alumni_profile(student_id):
+	"""View detailed alumni profile with composite location type"""
+	if 'username' not in session:
+		return redirect('/login')
+	
+	# Get student info with industry_tags array
+	student_query = """
+		SELECT s.student_id, s.first_name, s.last_name, s.email, s.industry_tags,
+		       g.year, g.degree, g.honors
+		FROM jc6292.student s
+		LEFT JOIN jc6292.graduated_in g ON s.student_id = g.student_id
+		WHERE s.student_id = :student_id
+	"""
+	cursor = g.conn.execute(text(student_query), {'student_id': student_id})
+	result = cursor.fetchone()
+	cursor.close()
+	
+	if not result:
+		abort(404)
+	
+	student = {
+		'id': result[0],
+		'first_name': result[1],
+		'last_name': result[2],
+		'email': result[3],
+		'industry_tags': result[4] if result[4] else [],
+		'graduation_year': result[5],
+		'degree': result[6],
+		'honors': result[7]
+	}
+	
+	# Get location using composite type from alumni_profile
+	location_query = """
+		SELECT (current_location).city, (current_location).state, (current_location).country,
+		       bio, linkedin_url
+		FROM jc6292.alumni_profile
+		WHERE student_id = :student_id
+	"""
+	cursor = g.conn.execute(text(location_query), {'student_id': student_id})
+	loc_result = cursor.fetchone()
+	cursor.close()
+	
+	if loc_result:
+		student['city'] = loc_result[0]
+		student['state'] = loc_result[1]
+		student['country'] = loc_result[2]
+		student['bio'] = loc_result[3]
+		student['linkedin_url'] = loc_result[4]
+	
+	# Get clubs
+	clubs_query = """
+		SELECT c.name, c.category, c.about
+		FROM jc6292.member_of m
+		JOIN jc6292.club c ON m.club_id = c.club_id
+		WHERE m.student_id = :student_id AND m.leave_date IS NULL
+	"""
+	cursor = g.conn.execute(text(clubs_query), {'student_id': student_id})
+	clubs = [{'name': r[0], 'category': r[1], 'about': r[2]} for r in cursor]
+	cursor.close()
+	
+	context = dict(student=student, clubs=clubs, username=session.get('username'))
+	return render_template("alumni_profile.html", **context)
+
+
+# Add club page - shows form
+
 
 
 # Add club - handle form submission
@@ -309,10 +420,11 @@ def add_club():
 	try:
 		name = request.form['name']
 		category = request.form.get('category', 'Other')
+		about = request.form.get('about', '')
 		
-		params = {'name': name, 'category': category}
+		params = {'name': name, 'category': category, 'about': about if about else None}
 		g.conn.execute(text(
-			'INSERT INTO jc6292.club (name, category) VALUES (:name, :category)'
+			'INSERT INTO jc6292.club (name, category, about) VALUES (:name, :category, :about)'
 		), params)
 		g.conn.commit()
 		return redirect('/')
@@ -457,6 +569,97 @@ def login_post():
 			except:
 				pass
 		return render_template("login.html", error="An error occurred. Please try again.")
+
+
+# Delete student
+@app.route('/delete_student/<int:student_id>', methods=['POST'])
+def delete_student(student_id):
+	"""Delete a student from the database"""
+	if 'username' not in session:
+		return redirect('/login')
+	
+	try:
+		# Delete student (will cascade to related tables)
+		g.conn.execute(text(
+			'DELETE FROM jc6292.student WHERE student_id = :student_id'
+		), {'student_id': student_id})
+		g.conn.commit()
+		return redirect('/')
+	except Exception as e:
+		print(f"Error deleting student: {e}")
+		return f"Error: {str(e)}", 500
+
+
+# Manage students page
+@app.route('/manage_students')
+def manage_students():
+	"""Display all students for management"""
+	if 'username' not in session:
+		return redirect('/login')
+	
+	students_query = """
+		SELECT 
+			s.student_id,
+			s.first_name,
+			s.last_name,
+			s.email,
+			g.year as graduation_year,
+			g.degree,
+			(ap.current_location).city as city,
+			(ap.current_location).state as state
+		FROM jc6292.student s
+		LEFT JOIN jc6292.graduated_in g ON s.student_id = g.student_id
+		LEFT JOIN jc6292.alumni_profile ap ON s.student_id = ap.student_id
+		ORDER BY s.last_name, s.first_name
+	"""
+	cursor = g.conn.execute(text(students_query))
+	students = []
+	for result in cursor:
+		students.append({
+			'student_id': result[0],
+			'first_name': result[1],
+			'last_name': result[2],
+			'email': result[3],
+			'graduation_year': result[4],
+			'degree': result[5],
+			'city': result[6],
+			'state': result[7]
+		})
+	cursor.close()
+	
+	context = dict(students=students, username=session.get('username'))
+	return render_template("manage_students.html", **context)
+
+
+# Delete club
+@app.route('/delete_club/<int:club_id>', methods=['POST'])
+def delete_club(club_id):
+	"""Delete a club from the database"""
+	if 'username' not in session:
+		return redirect('/login')
+	
+	try:
+		# First check if club has members
+		check_query = """
+			SELECT COUNT(*) FROM jc6292.member_of 
+			WHERE club_id = :club_id AND leave_date IS NULL
+		"""
+		cursor = g.conn.execute(text(check_query), {'club_id': club_id})
+		member_count = cursor.fetchone()[0]
+		cursor.close()
+		
+		if member_count > 0:
+			return f"Cannot delete club: {member_count} active member(s) still in this club. Please remove members first.", 400
+		
+		# Delete club
+		g.conn.execute(text(
+			'DELETE FROM jc6292.club WHERE club_id = :club_id'
+		), {'club_id': club_id})
+		g.conn.commit()
+		return redirect('/search_clubs')
+	except Exception as e:
+		print(f"Error deleting club: {e}")
+		return f"Error: {str(e)}", 500
 
 
 # Logout
