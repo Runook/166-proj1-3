@@ -123,8 +123,6 @@ The application implements three advanced PostgreSQL features as part of the cou
 - Enables querying location fields without additional JOINs
 - Accessed using `(current_location).city` syntax
 
-See `IMPLEMENTATION_SUMMARY.md` and `QUERY_EXAMPLES.sql` for detailed documentation and example queries.
-
 ## Usage
 
 ### Login

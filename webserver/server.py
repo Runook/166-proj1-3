@@ -134,11 +134,12 @@ def index():
 	year_filter = request.args.get('year', '')
 	
 	# Get all clubs for dropdown (including about text)
-	clubs_query = "SELECT club_id, name, category, about FROM jc6292.club ORDER BY name"
+	clubs_query = "SELECT club_id, name, category, about FROM jc6292.club WHERE club_id IS NOT NULL ORDER BY name"
 	cursor = g.conn.execute(text(clubs_query))
 	clubs = []
 	for result in cursor:
-		clubs.append({'id': result[0], 'name': result[1], 'category': result[2], 'about': result[3]})
+		if result[0] is not None:  # Extra safety check
+			clubs.append({'id': result[0], 'name': result[1], 'category': result[2], 'about': result[3]})
 	cursor.close()
 	
 	# Get all graduation years for dropdown
@@ -179,7 +180,8 @@ def index():
 	# Add filters if provided
 	params = {}
 	if club_filter:
-		graduates_query += " AND c.club_id = :club_id"
+		# Filter for specific club, ensuring we only get students with that club
+		graduates_query += " AND c.club_id = :club_id AND c.club_id IS NOT NULL"
 		params['club_id'] = club_filter
 	if year_filter:
 		graduates_query += " AND g.year = :year"
@@ -217,21 +219,21 @@ def index():
 def add_student_page():
 	"""Display form to add a new student"""
 	# Get clubs for dropdown
-	clubs_query = "SELECT club_id, name FROM jc6292.club ORDER BY name"
+	clubs_query = "SELECT club_id, name FROM jc6292.club WHERE club_id IS NOT NULL ORDER BY name"
 	cursor = g.conn.execute(text(clubs_query))
-	clubs = [{'id': result[0], 'name': result[1]} for result in cursor]
+	clubs = [{'id': result[0], 'name': result[1]} for result in cursor if result[0] is not None]
 	cursor.close()
 	
 	# Get locations for dropdown
-	locations_query = "SELECT loc_id, city, state FROM jc6292.location ORDER BY city"
+	locations_query = "SELECT loc_id, city, state FROM jc6292.location WHERE loc_id IS NOT NULL ORDER BY city"
 	cursor = g.conn.execute(text(locations_query))
-	locations = [{'id': result[0], 'city': result[1], 'state': result[2]} for result in cursor]
+	locations = [{'id': result[0], 'city': result[1], 'state': result[2]} for result in cursor if result[0] is not None]
 	cursor.close()
 	
 	# Get industries for dropdown
-	industries_query = "SELECT industry_id, name FROM jc6292.industry ORDER BY name"
+	industries_query = "SELECT industry_id, name FROM jc6292.industry WHERE industry_id IS NOT NULL ORDER BY name"
 	cursor = g.conn.execute(text(industries_query))
-	industries = [{'id': result[0], 'name': result[1]} for result in cursor]
+	industries = [{'id': result[0], 'name': result[1]} for result in cursor if result[0] is not None]
 	cursor.close()
 	
 	context = dict(clubs=clubs, locations=locations, industries=industries)
